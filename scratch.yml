@@ -1,0 +1,24 @@
+# This is a comment on the top of the file
+# This configuraiton can be converted to json format online
+
+base_person: &base
+  city: NYC
+  country: USA
+
+person:
+  <<: *base
+  name: &name John
+  age: 29
+  IsMale: true
+  stuff:
+    - laptop
+    - car
+    - bike
+    - merco
+  food: [pizza, donuts, coke]
+  friends:
+    - name: Jane
+      age: 19
+    - name: Mike
+      age: 22
+    self: *name
