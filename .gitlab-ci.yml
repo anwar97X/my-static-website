@@ -1,0 +1,119 @@
+image: node:18
+
+stages:
+  - build
+  - test
+  - deploy staging
+  - stop review
+  - PROD tests
+  - deploy PROD
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+build website:
+  stage: build
+  before_script:
+    - echo "Build the website with npm & gatsby"
+  script:
+    - echo $CI_COMMIT_SHORT_SHA
+    - npm install
+    - npm install -g gatsby-cli
+    - gatsby build
+      #  - sed -i "s/%%VERSION%%/$CI_COMMIT_SHORT_SHA/" ./public/index.html
+  artifacts:
+    paths:
+      - ./public
+
+.test artifact: # . is used to disable the job
+  stage: test
+  image: alpine
+  script: 
+    - grep "Gatsby" ./public/index.html
+      # - greo "xxxx" ./public/index.html 
+
+test website:
+  stage: test
+  before_script:
+    - echo "Testing the website"
+  script:
+    - npm install
+    - npm install -g gatsby-cli
+    - gatsby serve &
+    - sleep 5
+    - curl "http://localhost:9000" | tac | tac | grep -q "Gatsby"
+
+PROD tests:
+  stage: PROD tests
+  image: alpine
+  before_script:
+    - echo "Testing the website for production"
+  script:
+    - apk add --no-cache curl
+    - curl -s "https://$PROD_DOMAIN" | grep -q "$CI_COMMIT_SHORT_SHA"
+  when: manual
+
+stop review:
+  stage: deploy staging
+  only:
+    - merge_requests
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - npm install --global surge
+    - surge teardown $STAGING_DOMAIN
+  when: manual
+  environment:
+    name: staging
+    action: stop
+
+.deploy_template: &deploy
+  only:
+    - master
+  script:
+    - npm install --global surge
+    - surge --project ./public --domain $DOMAIN
+  environment:
+    url: https://$DOMAIN
+
+deploy staging:
+  <<: *deploy
+  stage: deploy staging
+  variables:
+    DOMAIN: $STAGING_DOMAIN
+  environment:
+    name: staging
+  #  url: https://$STAGING_DOMAIN
+  #  on_stop: stop review
+  #only:
+  #  - merge_requests
+  before_script:
+    - echo "Deploying to staging"
+  #script:
+  #  - npm install --global surge
+  #  - surge --project ./public --domain $STAGING_DOMAIN
+
+deploy PROD:
+  <<: *deploy
+  stage: deploy PROD
+  variables:
+    DOMAIN: $PROD_DOMAIN
+  environment:
+    name: PROD
+  #  url: https://$PROD_DOMAIN
+  #only:
+   # - master
+  when: manual
+  allow_failure: false
+  before_script:
+    - echo "Deploying to production"
+  #script:
+  #  - npm install --global surge
+  #  - surge --project ./public --domain $PROD_DOMAIN
+
+variables:
+  IMAGE_PATH: https://artifactory.emobg.io/artifactory/dockerhub/
+  STAGING_DOMAIN: staging-NobaguetteNogain.surge.sh
+  PROD_DOMAIN: NobaguetteNogain.surge.sh
