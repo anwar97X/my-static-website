@@ -114,6 +114,6 @@ deploy PROD:
   #  - surge --project ./public --domain $PROD_DOMAIN
 
 variables:
-  IMAGE_PATH: https://artifactory.emobg.io/artifactory/dockerhub/
+  IMAGE_PATH: https://artifactory.$ARTIFACTORY_DOMAIN.io/artifactory/dockerhub/
   STAGING_DOMAIN: staging-NobaguetteNogain.surge.sh
   PROD_DOMAIN: NobaguetteNogain.surge.sh
